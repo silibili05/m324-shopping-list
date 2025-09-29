@@ -29,8 +29,27 @@ jobs:
             npm install
           fi
 
+      - name: Validate lint script exists
+        run: |
+          node -e "const p=require('./package.json'); if(!p.scripts||!p.scripts.lint){console.error('\n❌ Missing \"lint\" script in package.json. Add for example: \n  \"lint\": \"eslint .\"\n'); process.exit(1)} else {console.log('✅ lint script found: '+p.scripts.lint)}"
+
       - name: Run ESLint
         run: npm run lint
+
+      - name: Print npm logs on failure
+        if: failure()
+        run: |
+          echo "\n--- NPM logs ---"
+          ls -la ~/.npm/_logs || true
+          tail -n +1 ~/.npm/_logs/* || true
+
+      - name: Upload npm logs (lint)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-logs-lint
+          path: ~/.npm/_logs/
+          if-no-files-found: ignore
 
   test:
     name: Test
@@ -55,10 +74,21 @@ jobs:
             npm install
           fi
 
+      - name: Validate test script exists
+        run: |
+          node -e "const p=require('./package.json'); if(!p.scripts||!p.scripts.test){console.error('\n❌ Missing \"test\" script in package.json. Add for example: \n  \"test\": \"jest\"\n'); process.exit(1)} else {console.log('✅ test script found: '+p.scripts.test)}"
+
       - name: Run Jest
         env:
           CI: true
-        run: npm test -- --coverage --reporters=default --reporters=jest-junit
+        run: npm run test -- --coverage --reporters=default --reporters=jest-junit
+
+      - name: Print npm logs on failure
+        if: failure()
+        run: |
+          echo "\n--- NPM logs ---"
+          ls -la ~/.npm/_logs || true
+          tail -n +1 ~/.npm/_logs/* || true
 
       - name: Upload test results (JUnit)
         if: always()
@@ -77,6 +107,14 @@ jobs:
           name: coverage
           path: |
             coverage/
+          if-no-files-found: ignore
+
+      - name: Upload npm logs (test)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-logs-test
+          path: ~/.npm/_logs/
           if-no-files-found: ignore
 
   deploy:
